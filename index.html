@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>智能股票预测助手</title>
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0e27">
+<style>
+:root {
+  --bg-primary: #0a0e27;
+  --bg-secondary: #131735;
+  --bg-card: #1a1f3e;
+  --bg-card-hover: #222850;
+  --text-primary: #e8eaf6;
+  --text-secondary: #9fa8da;
+  --accent-red: #ef5350;
+  --accent-green: #26a69a;
+  --accent-blue: #5c6bc0;
+  --accent-gold: #ffd54f;
+  --border-color: #2a3060;
+  --shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  padding-bottom: 80px;
+  -webkit-tap-highlight-color: transparent;
+}
+.header {
+  background: linear-gradient(135deg, #1a1f50 0%, #0d1230 100%);
+  padding: 20px 16px 16px;
+  text-align: center;
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.header h1 {
+  font-size: 20px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #7986cb, #5c6bc0, #7986cb);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 12px;
+}
+.search-box {
+  display: flex;
+  gap: 8px;
+  max-width: 500px;
+  margin: 0 auto;
+}
+.search-box input {
+  flex: 1;
+  padding: 10px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 25px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.3s;
+}
+.search-box input:focus {
+  border-color: var(--accent-blue);
+}
+.search-box input::placeholder {
+  color: #5c6390;
+}
+.search-box button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 25px;
+  background: linear-gradient(135deg, #5c6bc0, #3f51b5);
+  color: white;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.2s, opacity 0.2s;
+  white-space: nowrap;
+}
+.search-box button:active {
+  transform: scale(0.96);
+}
+.container {
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 12px 12px;
+}
+/* Loading */
+.loading {
+  text-align: center;
+  padding: 40px 20px;
+  display: none;
+}
+.loading.active { display: block; }
+.spinner {
+  width: 40px; height: 40px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--accent-blue);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+/* Stock Info Card */
+.stock-info-card {
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow);
+  display: none;
+}
+.stock-info-card.active { display: block; }
+.stock-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+.stock-name { font-size: 22px; font-weight: 700; }
+.stock-code { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+.stock-price-area { text-align: right; }
+.current-price { font-size: 28px; font-weight: 700; }
+.price-change { font-size: 14px; margin-top: 2px; }
+.up { color: var(--accent-red); }
+.down { color: var(--accent-green); }
+/* Prediction Result */
+.prediction-card {
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow);
+  display: none;
+}
+.prediction-card.active { display: block; }
+.pred-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pred-title::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 18px;
+  background: var(--accent-blue);
+  border-radius: 2px;
+}
+.prediction-result {
+  text-align: center;
+  padding: 16px 0;
+  margin-bottom: 12px;
+}
+.pred-direction {
+  font-size: 36px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+.pred-direction.upward { color: var(--accent-red); }
+.pred-direction.downward { color: var(--accent-green); }
+.pred-direction.flat { color: var(--accent-gold); }
+.confidence-bar {
+  height: 8px;
+  background: var(--bg-secondary);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 12px 0 8px;
+}
+.confidence-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 1s ease;
+}
+.confidence-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.pred-rate {
+  font-size: 20px;
+  font-weight: 600;
+  margin-top: 8px;
+}
+/* Factor Scores */
+.factor-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+.factor-item {
+  background: var(--bg-secondary);
+  border-radius: 10px;
+  padding: 12px;
+}
+.factor-name {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+.factor-score {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.factor-value {
+  font-size: 16px;
+  font-weight: 600;
+}
+.factor-bar {
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  margin-top: 6px;
+  overflow: hidden;
+}
+.factor-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.8s ease;
+}
+/* Detail Sections */
+.detail-section {
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow);
+  display: none;
+}
+.detail-section.active { display: block; }
+.section-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.section-title .icon { font-size: 18px; }
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  font-size: 13px;
+}
+.detail-row:last-child { border-bottom: none; }
+.detail-label { color: var(--text-secondary); }
+.detail-value { font-weight: 500; }
+/* Bottom Nav */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-around;
+  padding: 8px 0;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  z-index: 100;
+}
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px 12px;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+.nav-item.active { color: var(--accent-blue); }
+.nav-item .nav-icon { font-size: 20px; }
+/* History */
+.history-item {
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.history-item:active { background: var(--bg-card-hover); }
+.history-info .h-name { font-size: 15px; font-weight: 600; }
+.history-info .h-code { font-size: 12px; color: var(--text-secondary); }
+.history-pred { text-align: right; }
+.history-pred .h-dir { font-size: 14px; font-weight: 600; }
+.history-pred .h-time { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+/* Disclaimer */
+.disclaimer {
+  background: rgba(255,213,79,0.1);
+  border: 1px solid rgba(255,213,79,0.2);
+  border-radius: 10px;
+  padding: 12px;
+  margin: 12px 0;
+  font-size: 12px;
+  color: var(--accent-gold);
+  line-height: 1.6;
+}
+/* Welcome Screen */
+.welcome {
+  text-align: center;
+  padding: 40px 20px;
+}
+.welcome-icon { font-size: 64px; margin-bottom: 16px; }
+.welcome h2 { font-size: 20px; margin-bottom: 8px; }
+.welcome p { font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
+.feature-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 24px;
+}
+.feature-item {
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 16px 12px;
+  text-align: center;
+}
+.feature-item .f-icon { font-size: 28px; margin-bottom: 8px; }
+.feature-item .f-title { font-size: 13px; font-weight: 500; }
+.feature-item .f-desc { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+/* Responsive */
+@media (min-width: 500px) {
+  .container { padding: 16px 20px; }
+}
+/* Pulse animation for live indicator */
+.live-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  background: var(--accent-green);
+  border-radius: 50%;
+  margin-right: 4px;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+/* Tab content */
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.clear-btn {
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 6px 14px;
+  border-radius: 16px;
+  font-size: 12px;
+  cursor: pointer;
+  margin-top: 12px;
+}
+.clear-btn:active { background: var(--bg-card); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📈 智能股票预测助手</h1>
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="输入股票名称或代码 (如: 贵州茅台, 600519)" autocomplete="off">
+    <button onclick="searchStock()">预测</button>
+  </div>
+</div>
+
+<div class="container">
+  <!-- Loading -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <div style="color: var(--text-secondary); font-size: 14px;">正在分析多项技术指标...</div>
+  </div>
+
+  <!-- Welcome -->
+  <div id="welcomeScreen" class="tab-content active">
+    <div class="welcome">
+      <div class="welcome-icon">🔮</div>
+      <h2>多维度智能预测</h2>
+      <p>综合分析基本面、技术面、资金面、情绪面等<br>10+项核心指标，预判股票未来走势</p>
+      <div class="feature-grid">
+        <div class="feature-item">
+          <div class="f-icon">📊</div>
+          <div class="f-title">技术分析</div>
+          <div class="f-desc">MACD/RSI/KDJ/均线/BOLL</div>
+        </div>
+        <div class="feature-item">
+          <div class="f-icon">💰</div>
+          <div class="f-title">基本面</div>
+          <div class="f-desc">PE/PB/ROE/盈利/估值</div>
+        </div>
+        <div class="feature-item">
+          <div class="f-icon">🌊</div>
+          <div class="f-title">资金面</div>
+          <div class="f-desc">主力流入/成交量/换手率</div>
+        </div>
+        <div class="feature-item">
+          <div class="f-icon">🧠</div>
+          <div class="f-title">综合评分</div>
+          <div class="f-desc">加权算法预测涨跌概率</div>
+        </div>
+      </div>
+      <div class="disclaimer">
+        ⚠️ 免责声明：本工具仅供学习参考，不构成任何投资建议。股市有风险，投资需谨慎。预测结果基于历史数据和量化模型，不代表未来实际表现。
+      </div>
+    </div>
+  </div>
+
+  <!-- Prediction Results -->
+  <div id="resultTab" class="tab-content">
+    <!-- Stock Info -->
+    <div class="stock-info-card" id="stockInfoCard">
+      <div class="stock-header">
+        <div>
+          <div class="stock-name" id="stockName">--</div>
+          <div class="stock-code" id="stockCode">--</div>
+        </div>
+        <div class="stock-price-area">
+          <div class="current-price" id="currentPrice">--</div>
+          <div class="price-change" id="priceChange">--</div>
+        </div>
+      </div>
+      <div class="detail-row"><span class="detail-label">总市值</span><span class="detail-value" id="marketCap">--</span></div>
+      <div class="detail-row"><span class="detail-label">流通市值</span><span class="detail-value" id="floatCap">--</span></div>
+      <div class="detail-row"><span class="detail-label">市盈率(PE)</span><span class="detail-value" id="peRatio">--</span></div>
+      <div class="detail-row"><span class="detail-label">市净率(PB)</span><span class="detail-value" id="pbRatio">--</span></div>
+      <div class="detail-row"><span class="detail-label">ROE</span><span class="detail-value" id="roe">--</span></div>
+      <div class="detail-row"><span class="detail-label">换手率</span><span class="detail-value" id="turnoverRate">--</span></div>
+      <div class="detail-row"><span class="detail-label">成交量</span><span class="detail-value" id="volume">--</span></div>
+      <div class="detail-row"><span class="detail-label">成交额</span><span class="detail-value" id="amount">--</span></div>
+    </div>
+
+    <!-- Prediction -->
+    <div class="prediction-card" id="predictionCard">
+      <div class="pred-title">综合预测结果</div>
+      <div class="prediction-result">
+        <div class="pred-direction" id="predDirection">--</div>
+        <div class="confidence-bar"><div class="confidence-fill" id="confidenceFill"></div></div>
+        <div class="confidence-label" id="confidenceLabel">置信度: --</div>
+        <div class="pred-rate" id="predRate">预计涨跌幅: --</div>
+      </div>
+      <div class="factor-grid" id="factorGrid"></div>
+    </div>
+
+    <!-- Technical Details -->
+    <div class="detail-section" id="techSection">
+      <div class="section-title"><span class="icon">📉</span>技术指标详情</div>
+      <div id="techDetails"></div>
+    </div>
+
+    <!-- Fundamentals -->
+    <div class="detail-section" id="fundSection">
+      <div class="section-title"><span class="icon">📋</span>基本面指标</div>
+      <div id="fundDetails"></div>
+    </div>
+
+    <!-- Capital Flow -->
+    <div class="detail-section" id="capitalSection">
+      <div class="section-title"><span class="icon">💹</span>资金面分析</div>
+      <div id="capitalDetails"></div>
+    </div>
+
+    <!-- Disclaimer -->
+    <div class="disclaimer">
+      ⚠️ 免责声明：以上分析基于量化模型和历史数据，仅供参考学习，不构成投资建议。股市有风险，投资需谨慎。
+    </div>
+  </div>
+
+  <!-- History -->
+  <div id="historyTab" class="tab-content">
+    <div class="section-title" style="margin-bottom: 16px;"><span class="icon">🕐</span>预测历史</div>
+    <div id="historyList"></div>
+    <div style="text-align:center"><button class="clear-btn" onclick="clearHistory()">清空历史记录</button></div>
+  </div>
+</div>
+
+<!-- Bottom Navigation -->
+<div class="bottom-nav">
+  <div class="nav-item active" onclick="switchTab('welcome')" id="navWelcome">
+    <span class="nav-icon">🏠</span>
+    <span>首页</span>
+  </div>
+  <div class="nav-item" onclick="switchTab('result')" id="navResult">
+    <span class="nav-icon">🔮</span>
+    <span>预测</span>
+  </div>
+  <div class="nav-item" onclick="switchTab('history')" id="navHistory">
+    <span class="nav-icon">🕐</span>
+    <span>历史</span>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+// Register Service Worker for PWA
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js')
+    .then(() => console.log('SW registered'))
+    .catch(err => console.error('SW failed:', err));
+}
+
+// Install prompt
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  showInstallBanner();
+});
+
+function showInstallBanner() {
+  const banner = document.createElement('div');
+  banner.style.cssText = 'position:fixed;top:70px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#5c6bc0,#3f51b5);padding:12px 20px;border-radius:12px;z-index:200;display:flex;align-items:center;gap:10px;box-shadow:0 4px 20px rgba(0,0,0,0.4);animation:slideDown 0.3s ease;font-size:14px;max-width:90%';
+  banner.innerHTML = '<span>📱</span><span style="flex:1">点击安装到桌面</span><button onclick="installApp()" style="background:white;color:#3f51b5;border:none;padding:6px 16px;border-radius:20px;font-weight:600;cursor:pointer">安装</button><button onclick="this.parentElement.remove()" style="background:none;color:white;border:none;font-size:18px;cursor:pointer;padding:0 4px">×</button>';
+  document.body.appendChild(banner);
+}
+
+async function installApp() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') console.log('App installed');
+    deferredPrompt = null;
+  }
+}
+</script>
+<style>
+@keyframes slideDown { from { transform: translateX(-50%) translateY(-20px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+</style>
+</body>
+</html>
